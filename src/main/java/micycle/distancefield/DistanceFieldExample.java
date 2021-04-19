@@ -1,9 +1,11 @@
 package micycle.distancefield;
 
 import micycle.distancefield.DistanceField.Interpolator;
-import micycle.pts.PTS;
-import micycle.pts.PTSMorphology;
-import micycle.pts.utility.PoissonDistribution;
+import micycle.pgs.PGS;
+import micycle.pgs.PGS_Morphology;
+import micycle.pgs.PGS_Processing;
+import micycle.pgs.PGS_Transformation;
+import micycle.pgs.utility.PoissonDistribution;
 import peasyGradients.gradient.Gradient;
 import processing.core.PApplet;
 import processing.core.PImage;
@@ -40,8 +42,12 @@ public final class DistanceFieldExample extends PApplet {
 		PoissonDistribution pd = new PoissonDistribution(0);
 		final int buffer = 30;
 		var points = pd.generate(buffer, buffer, width - buffer, height - buffer, 25, 10);
-		shape = PTSMorphology.concaveHull(points, 5);
+		shape = PGS_Processing.concaveHull(points, 500);
 
+		var square = createShape(RECT, 0, 0, 300, 300);
+		square = PGS_Transformation.translateTo(square, width / 2, height / 2);
+
+//		shape = PTS.difference(shape, square);
 		df = new DistanceField(this, shape, heatMap);
 
 		shape.setFill(false);

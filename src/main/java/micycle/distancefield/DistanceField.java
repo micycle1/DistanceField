@@ -12,11 +12,12 @@ import org.jgrapht.graph.DefaultUndirectedWeightedGraph;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 import org.tinfour.interpolation.IInterpolatorOverTin;
+import org.tinfour.interpolation.NaturalNeighborInterpolator;
 import org.tinfour.standard.IncrementalTin;
 
 import micycle.distancefield.interpolator.NNIF;
 import micycle.distancefield.interpolator.TFIF;
-import micycle.pts.PTSTriangulation;
+import micycle.pgs.PGS_Triangulation;
 import peasyGradients.gradient.Gradient;
 import processing.core.PApplet;
 import processing.core.PGraphics;
@@ -26,14 +27,20 @@ import processing.core.PVector;
 
 /**
  * Distance fields for PShapes.
+ * <p>
+ * TODO: dist between origin and chosen pixel
  * 
  * @author Michael Carleton
  *
  */
 public class DistanceField {
 
+	// see https://github.com/openrndr/orx/tree/master/orx-jumpflood
+
 	public enum Interpolator {
-		/** slow, but great results */
+		/** faster than NN, but doesn't work on shapes with holes */
+		NaturalNeighborQuick,
+		// https://github.com/gwlucastrig/Tinfour/wiki/Introduction-to-Natural-Neighbor-Interpolation
 		NaturalNeighbor,
 		/** much faster than NN, but worse quality */
 		Trianglular
@@ -49,7 +56,6 @@ public class DistanceField {
 	protected PGraphics shapeRaster;
 
 	protected int[] colorMap;
-	protected ArrayList<PVector> vertices;
 
 	private final ExecutorService THREAD_POOL;
 	protected final int THREAD_COUNT;
@@ -64,12 +70,7 @@ public class DistanceField {
 		THREAD_COUNT = Math.min(4, Runtime.getRuntime().availableProcessors() - 1);
 		THREAD_POOL = Executors.newFixedThreadPool(THREAD_COUNT);
 
-		vertices = new ArrayList<PVector>();
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			vertices.add(shape.getVertex(i));
-		}
-
-		tin = PTSTriangulation.delaunayTriangulationTin(shape, null, true, 0, false);
+		tin = PGS_Triangulation.delaunayTriangulationTin(shape, null, true, 0, true);
 
 		graph = new DefaultUndirectedWeightedGraph<>(IQuadEdge.class);
 		tin.edges().forEach(e -> {
@@ -135,13 +136,18 @@ public class DistanceField {
 		for (int i = 0; i < THREAD_COUNT; i++) {
 			switch (interpolator) {
 				case NaturalNeighbor: {
-					taskList.add(new Thread(new NNIF(distanceMesh), startRow, rowsPerThread));
+					taskList.add(new Thread(new NaturalNeighborInterpolator(distanceMesh), startRow, rowsPerThread));
 					break;
 				}
 				case Trianglular: {
 					taskList.add(new Thread(new TFIF(distanceMesh), startRow, rowsPerThread));
 					break;
 				}
+				case NaturalNeighborQuick:
+					taskList.add(new Thread(new NNIF(distanceMesh), startRow, rowsPerThread));
+					break;
+				default:
+					break;
 			}
 			startRow += rowsPerThread;
 		}
