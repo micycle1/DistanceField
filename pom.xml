@@ -67,7 +67,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>PGS</artifactId>
-			<version>master-05d424e-1</version>
+			<version>master-3b2c725-1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
