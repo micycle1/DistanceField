@@ -14,9 +14,9 @@ import org.tinfour.interpolation.IVertexValuator;
 import org.tinfour.interpolation.NaturalNeighborInterpolator;
 
 /**
- * Indifferent to constrained edges etc.
- * 
- * @author MCarleton
+ * NaturalNeighborInterpolatorFast. Indifferent to constrained edges etc.
+ *
+ * @author Michael Carleton
  *
  */
 public class NNIF extends NaturalNeighborInterpolator {
@@ -44,7 +44,7 @@ public class NNIF extends NaturalNeighborInterpolator {
 		if (nEdge == 0) {
 			// (x,y) is outside defined area
 			return Double.NaN;
-		} 
+		}
 //		else if (nEdge == 1) {
 //			// (x,y) is an exact match with the one edge in the list
 //			IQuadEdge e = eList.get(0);
@@ -74,6 +74,7 @@ public class NNIF extends NaturalNeighborInterpolator {
 
 	IQuadEdge e;
 
+	@Override
 	public List<IQuadEdge> getBowyerWatsonEnvelope(double x, double y) {
 		// in the logic below, we access the Vertex x and y coordinates directly
 		// but we use the getZ() method to get the z value. Some vertices
@@ -141,8 +142,7 @@ public class NNIF extends NaturalNeighborInterpolator {
 				double a22 = n1.getA().y - y;
 				double a32 = n1.getB().y - y;
 
-				h = (a11 * a11 + a12 * a12) * (a21 * a32 - a31 * a22)
-						+ (a21 * a21 + a22 * a22) * (a31 * a12 - a11 * a32)
+				h = (a11 * a11 + a12 * a12) * (a21 * a32 - a31 * a22) + (a21 * a21 + a22 * a22) * (a31 * a12 - a11 * a32)
 						+ (a31 * a31 + a32 * a32) * (a11 * a22 - a21 * a12);
 			}
 
@@ -279,17 +279,14 @@ public class NNIF extends NaturalNeighborInterpolator {
 		return weights;
 	}
 
-	private static void circumcircle(double ax, double ay, double bx, double by, double cx, double cy,
-			double[] result) {
+	private static void circumcircle(double ax, double ay, double bx, double by, double cx, double cy, double[] result) {
 
 		double D = (ax - cx) * (by - cy) - (bx - cx) * (ay - cy);
 		double px = (((ax - cx) * (ax + cx) + (ay - cy) * (ay + cy)) / 2 * (by - cy)
-				- ((bx - cx) * (bx + cx) + (by - cy) * (by + cy)) / 2 * (ay - cy))
-				/ D;
+				- ((bx - cx) * (bx + cx) + (by - cy) * (by + cy)) / 2 * (ay - cy)) / D;
 
 		double py = (((bx - cx) * (bx + cx) + (by - cy) * (by + cy)) / 2 * (ax - cx)
-				- ((ax - cx) * (ax + cx) + (ay - cy) * (ay + cy)) / 2 * (bx - cx))
-				/ D;
+				- ((ax - cx) * (ax + cx) + (ay - cy) * (ay + cy)) / 2 * (bx - cx)) / D;
 
 		result[0] = px;
 		result[1] = py;

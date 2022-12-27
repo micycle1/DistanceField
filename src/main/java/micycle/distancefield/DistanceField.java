@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 
 import org.jgrapht.Graph;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
@@ -13,6 +12,7 @@ import org.jgrapht.graph.DefaultUndirectedWeightedGraph;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.tinfour.common.IConstraint;
+import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.Vertex;
@@ -23,11 +23,9 @@ import org.tinfour.utils.TriangleCollector;
 
 import micycle.distancefield.interpolator.NNIF;
 import micycle.distancefield.interpolator.TFIF;
-import micycle.pgs.PGS_Conversion;
-import micycle.pgs.PGS_Triangulation;
-
-import peasyGradients.gradient.Gradient;
+import micycle.peasygradients.gradient.Gradient;
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PGraphics;
 import processing.core.PImage;
 import processing.core.PShape;
@@ -35,14 +33,13 @@ import processing.core.PVector;
 
 /**
  * Distance fields for PShapes.
- * <p>
- * TODO: dist between origin and chosen pixel
- * 
+ *
  * @author Michael Carleton
  *
  */
 public class DistanceField {
 
+	// TODO: dist between origin and chosen pixel
 	// see https://github.com/openrndr/orx/tree/master/orx-jumpflood
 
 	public enum Interpolator {
@@ -58,10 +55,10 @@ public class DistanceField {
 	protected final PShape shape;
 	protected final Gradient gradient;
 
-	protected IncrementalTin tin;
+	protected IIncrementalTin tin;
 	protected final Graph<Vertex, IQuadEdge> graph;
 	protected DijkstraShortestPath<Vertex, IQuadEdge> shortestPaths;
-	protected PGraphics shapeRaster;
+	public PGraphics shapeRaster;
 
 	protected int[] colorMap;
 
@@ -79,8 +76,9 @@ public class DistanceField {
 		THREAD_POOL = Executors.newFixedThreadPool(THREAD_COUNT);
 
 		final int REFINEMENTS = 0;
-		tin = PGS_Triangulation.delaunayTriangulationTin(shape, null, true, REFINEMENTS, true);
+		tin = Triangulator.delaunayTriangulationMesh(shape, null, true, REFINEMENTS, true);
 
+		System.out.println(tin.getConstraints().size());
 		graph = new DefaultUndirectedWeightedGraph<>(IQuadEdge.class);
 		tin.edges().forEach(e -> {
 			if (e.isConstrainedRegionInterior() || e.isConstrainedRegionBorder()) {
@@ -92,7 +90,7 @@ public class DistanceField {
 		});
 
 		shape.setFill(true);
-		shape.setFill(p.color(255));
+		shape.setFill(p.color(200, 200, 0));
 		shape.setStroke(false);
 		shapeRaster = p.createGraphics(p.width, p.height);
 		shapeRaster.beginDraw();
@@ -111,13 +109,13 @@ public class DistanceField {
 	/**
 	 * Compute the distance field for the shape using the vertex of the PShape
 	 * CLOSEST to given origin point.
-	 * 
+	 *
 	 * @param interpolator
 	 * @param origin
 	 * @return
 	 */
 	public void computeField(Interpolator interpolator, final PVector origin) {
-		IncrementalTin distanceMesh = new IncrementalTin(10);
+		IIncrementalTin distanceMesh = new IncrementalTin(10);
 
 		shortestPaths = new DijkstraShortestPath<>(graph);
 		var originVertex = tin.getNavigator().getNearestVertex(origin.x, origin.y); // vertices only
@@ -145,19 +143,19 @@ public class DistanceField {
 		int startRow = 0;
 		for (int i = 0; i < THREAD_COUNT; i++) {
 			switch (interpolator) {
-				case NaturalNeighbor: {
-					taskList.add(new Thread(new NaturalNeighborInterpolator(distanceMesh), startRow, rowsPerThread));
-					break;
-				}
-				case Trianglular: {
-					taskList.add(new Thread(new TFIF(distanceMesh), startRow, rowsPerThread));
-					break;
-				}
-				case NaturalNeighborQuick:
-					taskList.add(new Thread(new NNIF(distanceMesh), startRow, rowsPerThread));
-					break;
-				default:
-					break;
+			case NaturalNeighbor: {
+				taskList.add(new Thread(new NaturalNeighborInterpolator(distanceMesh), startRow, rowsPerThread));
+				break;
+			}
+			case Trianglular: {
+				taskList.add(new Thread(new TFIF(distanceMesh), startRow, rowsPerThread));
+				break;
+			}
+			case NaturalNeighborQuick:
+				taskList.add(new Thread(new NNIF(distanceMesh), startRow, rowsPerThread));
+				break;
+			default:
+				break;
 			}
 			startRow += rowsPerThread;
 		}
@@ -177,14 +175,14 @@ public class DistanceField {
 	/**
 	 * Compute the distance line for the shape using the vertex of the PShape
 	 * CLOSEST to given origin point.
-	 * 
+	 *
 	 * @param interpolator
 	 * @param origin
 	 * @return
 	 */
 	public PShape computeIsoline(Interpolator interpolator, final PVector origin, double distance) {
-		IncrementalTin distanceMesh = new IncrementalTin(10);
-		IncrementalTin constrainedMesh = new IncrementalTin(10);
+		IIncrementalTin distanceMesh = new IncrementalTin(10);
+		IIncrementalTin constrainedMesh = new IncrementalTin(10);
 
 		shortestPaths = new DijkstraShortestPath<>(graph);
 		var originVertex = tin.getNavigator().getNearestVertex(origin.x, origin.y); // vertices only
@@ -200,12 +198,16 @@ public class DistanceField {
 		}
 
 		List<IConstraint> constraints = new ArrayList<>();
-		var ring = PGS_Conversion.fromPShape(shape);
-		ArrayList<Vertex> points = new ArrayList<>();
+		List<Vertex> points = new ArrayList<>(shape.getVertexCount());
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			var c = shape.getVertex(i);
+			points.add(new Vertex(c.x, c.y, 0));
+		}
+		var ring = Conversion.fromVertices(shape);
 		Coordinate[] c = ring.getCoordinates();
 		if (Orientation.isCCW(c)) {
-			for (int i = 0; i < c.length; i++) {
-				points.add(new Vertex(c[i].x, c[i].y, 0));
+			for (Coordinate element : c) {
+				points.add(new Vertex(element.x, element.y, 0));
 			}
 		} else {
 			for (int i = c.length - 1; i >= 0; i--) { // iterate backwards if CW
@@ -216,40 +218,34 @@ public class DistanceField {
 
 		constrainedMesh.addConstraints(constraints, true); // true/false is negligible?
 
-		PShape isoline = new PShape(PShape.GEOMETRY);
+		PShape isoline = new PShape(PShape.PATH);
 		isoline.setStroke(true);
-		isoline.setStrokeCap(PShape.ROUND);
+		isoline.setStrokeCap(PConstants.ROUND);
 		isoline.setStroke(p.color(255, 0, 0));
 		isoline.setStrokeWeight(10);
 
-		isoline.beginShape(PShape.LINES);
-		TriangleCollector.visitTrianglesConstrained(constrainedMesh, new Consumer<Vertex[]>() {
-
-			@Override
-			public void accept(Vertex[] t) {
-
-				if (t[0].isConstraintMember() || t[1].isConstraintMember() || t[2].isConstraintMember()) {
-					return;
-				}
-				p.beginShape(PShape.LINES);
-				p.stroke(PApplet.map((float) t[0].x, 0, p.width, 0, 255), 20,
-						PApplet.map((float) t[0].y, 0, p.width, 255, 0));
-
-				int n = 0;
-				if (isoVertex(t[0], t[1], isoline, distance)) {
-					n++;
-				}
-				if (isoVertex(t[1], t[2], isoline, distance)) {
-					n++;
-				}
-				if (isoVertex(t[2], t[0], isoline, distance)) {
-					n++;
-				}
-				if (n == 2) { // isoline crosses triangle
-//					drawTriangle(t[0], t[1], t[2]);
-				}
-				p.endShape();
+		isoline.beginShape(PConstants.LINES);
+		TriangleCollector.visitTrianglesConstrained(constrainedMesh, t -> {
+			if (t[0].isConstraintMember() || t[1].isConstraintMember() || t[2].isConstraintMember()) {
+				return;
 			}
+			p.beginShape(PConstants.LINES);
+			p.stroke(PApplet.map((float) t[0].x, 0, p.width, 0, 255), 20, PApplet.map((float) t[0].y, 0, p.width, 255, 0));
+
+			int n = 0;
+			if (isoVertex(t[0], t[1], isoline, distance)) {
+				n++;
+			}
+			if (isoVertex(t[1], t[2], isoline, distance)) {
+				n++;
+			}
+			if (isoVertex(t[2], t[0], isoline, distance)) {
+				n++;
+			}
+			if (n == 2) { // isoline crosses triangle
+//					drawTriangle(t[0], t[1], t[2]);
+			}
+			p.endShape();
 		});
 
 		isoline.endShape();
@@ -260,7 +256,7 @@ public class DistanceField {
 	/**
 	 * Compute (if possible) the coordinate where the isoline crosses the between
 	 * the two vertices.
-	 * 
+	 *
 	 * @return
 	 */
 	private boolean isoVertex(Vertex a, Vertex b, PShape s, double d) {
@@ -324,7 +320,7 @@ public class DistanceField {
 		/**
 		 * Each thread should get its own interpoaltor due to last-triangle caching.
 		 * Threads draw into rows that span the whole width of the PApplet.
-		 * 
+		 *
 		 * @param interpolator
 		 * @param startRow     index starting row for this thread
 		 * @param rows         number of rows this thread should calculate and render

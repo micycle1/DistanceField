@@ -8,7 +8,6 @@ import org.tinfour.interpolation.IVertexValuator;
 import org.tinfour.interpolation.TriangularFacetInterpolator;
 
 /**
- * 
  * Provides interpolation based on treating the surface as a collection of
  * planar triangular facets.
  * <p>
@@ -21,7 +20,7 @@ import org.tinfour.interpolation.TriangularFacetInterpolator;
  * previous coordinate (which is often the case during grid-like iteration).
  * This saves use from walking the triangulation to find the next triangle that
  * contains the point every time.
- * 
+ *
  * @author Michael Carleton
  *
  */
@@ -40,21 +39,20 @@ public class TFIF extends TriangularFacetInterpolator {
 
 	/**
 	 * Doesn't support VertexMergerGroup.
-	 * 
+	 *
 	 * <p>
 	 * Most efficient when iterated calls to interpolate() are likely to be within
 	 * the same triangle.
-	 * 
+	 *
 	 * @param valuator ignored. Uses vertices getZ() values.
 	 */
 	@Override
 	public double interpolate(double x, double y, IVertexValuator valuator) {
 
-		/**
+		/*
 		 * Only call getNeighborEdge when containing triangle changes. Assumes
 		 * interpolate is called on closely packed values throughout iteration.
 		 */
-
 		if (v2 == null || !ptInTriangle(x, y, v0, v1, v2)) { // (x % 2 == 0 &&
 			IQuadEdge e = navigator.getNeighborEdge(x, y);
 			v0 = e.getA();
