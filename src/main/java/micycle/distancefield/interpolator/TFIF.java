@@ -12,7 +12,7 @@ import org.tinfour.interpolation.TriangularFacetInterpolator;
  * planar triangular facets.
  * <p>
  * This is a faster version of TriangularFacetInterpolator that is optimised for
- * repeated iteration; it forgoes some robustness checks but that hasn't been a
+ * repeated iteration; it foregoes some robustness checks but that hasn't been a
  * problem (so far...).
  * <p>
  * Most of the speedup comes from first checking whether the coordinate in the

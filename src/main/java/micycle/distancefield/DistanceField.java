@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.jgrapht.Graph;
+import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultUndirectedWeightedGraph;
 import org.locationtech.jts.algorithm.Orientation;
@@ -19,6 +20,7 @@ import org.tinfour.common.Vertex;
 import org.tinfour.interpolation.IInterpolatorOverTin;
 import org.tinfour.interpolation.NaturalNeighborInterpolator;
 import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
 
 import micycle.distancefield.interpolator.NNIF;
@@ -57,7 +59,7 @@ public class DistanceField {
 
 	protected IIncrementalTin tin;
 	protected final Graph<Vertex, IQuadEdge> graph;
-	protected DijkstraShortestPath<Vertex, IQuadEdge> shortestPaths;
+	protected ShortestPathAlgorithm<Vertex, IQuadEdge> shortestPaths;
 	public PGraphics shapeRaster;
 
 	protected int[] colorMap;
@@ -75,7 +77,7 @@ public class DistanceField {
 		THREAD_COUNT = Math.min(4, Runtime.getRuntime().availableProcessors() - 1);
 		THREAD_POOL = Executors.newFixedThreadPool(THREAD_COUNT);
 
-		final int REFINEMENTS = 0;
+		final int REFINEMENTS = 1;
 		tin = Triangulator.delaunayTriangulationMesh(shape, null, true, REFINEMENTS, true);
 
 		System.out.println(tin.getConstraints().size());
@@ -102,7 +104,8 @@ public class DistanceField {
 		p.registerMethod("dispose", this);
 	}
 
-	public PImage compute() {
+	private PImage compute() {
+		// TODO
 		return null;
 	}
 
@@ -111,23 +114,28 @@ public class DistanceField {
 	 * CLOSEST to given origin point.
 	 *
 	 * @param interpolator
-	 * @param origin
+	 * @param origin       must lie inside the shape
 	 * @return
 	 */
 	public void computeField(Interpolator interpolator, final PVector origin) {
-		IIncrementalTin distanceMesh = new IncrementalTin(10);
 
 		shortestPaths = new DijkstraShortestPath<>(graph);
 		var originVertex = tin.getNavigator().getNearestVertex(origin.x, origin.y); // vertices only
 		double maxDistance = 0;
+		List<Vertex> distanceVertices = new ArrayList<>(graph.vertexSet().size());
 		if (graph.containsVertex(originVertex)) {
 			var paths = shortestPaths.getPaths(originVertex);
 			for (Vertex v : graph.vertexSet()) {
 				var d = paths.getWeight(v);
-				distanceMesh.add(new Vertex(v.x, v.y, d));
+				distanceVertices.add(new Vertex(v.x, v.y, d));
 				maxDistance = Math.max(maxDistance, d);
 			}
 		}
+		// hilbert sort vertices for faster tin insertion with large vertex collections
+		HilbertSort hs = new HilbertSort();
+		hs.sort(distanceVertices);
+		IIncrementalTin distanceMesh = new IncrementalTin(10);
+		distanceMesh.add(distanceVertices, null);
 
 		final int l = 1000;
 		colorMap = new int[l];
@@ -136,7 +144,6 @@ public class DistanceField {
 		}
 		maxD = (1 / maxDistance) * colorMap.length;
 
-		p.loadPixels();
 		List<Callable<Boolean>> taskList = new ArrayList<>();
 
 		int rowsPerThread = p.height / THREAD_COUNT;
@@ -204,14 +211,14 @@ public class DistanceField {
 			points.add(new Vertex(c.x, c.y, 0));
 		}
 		var ring = Conversion.fromVertices(shape);
-		Coordinate[] c = ring.getCoordinates();
-		if (Orientation.isCCW(c)) {
-			for (Coordinate element : c) {
-				points.add(new Vertex(element.x, element.y, 0));
+		Coordinate[] coords = ring.getCoordinates();
+		if (Orientation.isCCW(coords)) {
+			for (Coordinate c : coords) {
+				points.add(new Vertex(c.x, c.y, 0));
 			}
 		} else {
-			for (int i = c.length - 1; i >= 0; i--) { // iterate backwards if CW
-				points.add(new Vertex(c[i].x, c[i].y, 0));
+			for (int i = coords.length - 1; i >= 0; i--) { // iterate backwards if CW
+				points.add(new Vertex(coords[i].x, coords[i].y, 0));
 			}
 		}
 		constraints.add(new PolygonConstraint(points));
@@ -301,7 +308,7 @@ public class DistanceField {
 	}
 
 	// get array[][] of normalised distance field values (not colors)
-	public void getField() {
+	private void getField() {
 
 	}
 
@@ -318,7 +325,7 @@ public class DistanceField {
 		private final int startRow, rows;
 
 		/**
-		 * Each thread should get its own interpoaltor due to last-triangle caching.
+		 * Each thread should get its own interpolator due to last-triangle caching.
 		 * Threads draw into rows that span the whole width of the PApplet.
 		 *
 		 * @param interpolator

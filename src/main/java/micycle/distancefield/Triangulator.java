@@ -6,14 +6,11 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
 
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryCollectionIterator;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
@@ -39,7 +36,7 @@ class Triangulator {
 	 * <p>
 	 * This method returns the triangulation in its raw form: a Triangulated
 	 * Irregular Network (mesh).
-	 * 
+	 *
 	 * @param shape the shape whose vertices to generate a triangulation from
 	 * @return Triangulated Irregular Network object (mesh)
 	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
@@ -56,7 +53,7 @@ class Triangulator {
 	 * <p>
 	 * This method returns the triangulation in its raw form: a Triangulated
 	 * Irregular Network (mesh).
-	 * 
+	 *
 	 * @param shape         the shape whose vertices to generate a triangulation
 	 *                      from. <b>Can be null</b>.
 	 * @param steinerPoints A list of additional points to insert into the
@@ -80,9 +77,7 @@ class Triangulator {
 	 *                      has no effect.
 	 * @return Triangulated Irregular Network object (mesh)
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
-	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
 	 */
-	@SuppressWarnings("unchecked")
 	static IIncrementalTin delaunayTriangulationMesh(PShape shape, Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
 		Geometry g = Conversion.fromVertices(shape);
@@ -146,8 +141,8 @@ class Triangulator {
 							continue;
 						}
 
-						for (int i = 0; i < c.length; i++) {
-							points.add(new Vertex(c[i].x, c[i].y, 0));
+						for (Coordinate element : c) {
+							points.add(new Vertex(element.x, element.y, 0));
 						}
 						/*
 						 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is
@@ -183,11 +178,11 @@ class Triangulator {
 		y /= 3;
 		return new Coordinate(x, y);
 	}
-	
+
 	/**
 	 * Provides convenient iteration of exterior and linear rings (if any) of a
 	 * polygonal JTS geometry. Supports MultiGeometries.
-	 * 
+	 *
 	 * @author Michael Carleton
 	 */
 	static final class LinearRingIterator implements Iterable<LinearRing> {
@@ -198,7 +193,7 @@ class Triangulator {
 		 * Constructs the iterator for the given geometry. The first ring returned by
 		 * the iterator is the exterior ring; all other rings (if any) are interior
 		 * rings.
-		 * 
+		 *
 		 * @param g input geometry
 		 */
 		public LinearRingIterator(Geometry g) {
@@ -219,7 +214,7 @@ class Triangulator {
 
 		@Override
 		public Iterator<LinearRing> iterator() {
-			return new Iterator<LinearRing>() {
+			return new Iterator<>() {
 
 				private int currentIndex = 0;
 

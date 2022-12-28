@@ -54,7 +54,7 @@ public class NNIF extends NaturalNeighborInterpolator {
 
 //		sumN++;
 //		sumSides += eList.size();
-		// The eList contains a series of edges definining the cavity
+		// The eList contains a series of edges defining the cavity
 		// containing the polygon.
 		double[] w = this.getBarycentricCoordinates(eList, x, y);
 		if (w == null) {
@@ -62,6 +62,7 @@ public class NNIF extends NaturalNeighborInterpolator {
 			// are available.
 			return Double.NaN;
 		}
+
 		double zSum = 0;
 		int k = 0;
 		for (IQuadEdge s : eList) {
@@ -69,7 +70,6 @@ public class NNIF extends NaturalNeighborInterpolator {
 			zSum += w[k++] * z;
 		}
 		return zSum;
-
 	}
 
 	IQuadEdge e;
@@ -80,8 +80,6 @@ public class NNIF extends NaturalNeighborInterpolator {
 		// but we use the getZ() method to get the z value. Some vertices
 		// may actually be VertexMergerGroup instances
 
-		ArrayList<IQuadEdge> eList = new ArrayList<>();
-//		IQuadEdge e = null;
 		if (v2 == null || !ptInTriangle(x, y, v0, v1, v2)) {
 			IQuadEdge locatorEdge = navigator.getNeighborEdge(x, y);
 			e = locatorEdge;
@@ -89,11 +87,11 @@ public class NNIF extends NaturalNeighborInterpolator {
 			v1 = e.getB();
 			v2 = e.getForward().getB();
 			if (v2 == null) {
-				return eList; // empty list, NNI undefined.
+				return new ArrayList<>(); // empty list, NNI undefined.
 			}
 		}
 
-//		eList.clear();
+		List<IQuadEdge> eList = new ArrayList<>();
 		double h;
 
 		// by the way the getNeighborEdge() method is defined, if
@@ -179,7 +177,7 @@ public class NNIF extends NaturalNeighborInterpolator {
 			return new double[0];
 		}
 
-		// The eList contains a series of edges definining the cavity
+		// The eList contains a series of edges defining the cavity
 		// containing the polygon.
 		Vertex a, b, c;
 
