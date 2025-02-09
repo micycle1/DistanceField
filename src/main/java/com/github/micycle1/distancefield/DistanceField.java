@@ -1,4 +1,4 @@
-package micycle.distancefield;
+package com.github.micycle1.distancefield;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +23,9 @@ import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
 
-import micycle.distancefield.interpolator.NNIF;
-import micycle.distancefield.interpolator.TFIF;
+import com.github.micycle1.distancefield.interpolator.NNIF;
+import com.github.micycle1.distancefield.interpolator.TFIF;
+
 import micycle.peasygradients.gradient.Gradient;
 import processing.core.PApplet;
 import processing.core.PConstants;

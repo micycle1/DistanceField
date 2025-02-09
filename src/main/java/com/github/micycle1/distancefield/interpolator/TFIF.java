@@ -1,4 +1,4 @@
-package micycle.distancefield.interpolator;
+package com.github.micycle1.distancefield.interpolator;
 
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IIncrementalTinNavigator;

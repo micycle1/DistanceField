@@ -1,4 +1,4 @@
-package micycle.distancefield.interpolator;
+package com.github.micycle1.distancefield.interpolator;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

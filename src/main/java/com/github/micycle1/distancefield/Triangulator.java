@@ -1,4 +1,4 @@
-package micycle.distancefield;
+package com.github.micycle1.distancefield;
 
 import java.util.ArrayList;
 import java.util.Collection;

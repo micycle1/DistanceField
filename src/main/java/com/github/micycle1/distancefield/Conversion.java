@@ -1,4 +1,4 @@
-package micycle.distancefield;
+package com.github.micycle1.distancefield;
 
 import static processing.core.PConstants.BEZIER_VERTEX;
 import static processing.core.PConstants.CURVE_VERTEX;
