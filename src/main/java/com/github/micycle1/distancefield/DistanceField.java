@@ -27,6 +27,8 @@ import com.github.micycle1.distancefield.interpolator.NNIF;
 import com.github.micycle1.distancefield.interpolator.TFIF;
 
 import micycle.peasygradients.gradient.Gradient;
+import micycle.pgs.PGS_Conversion;
+import micycle.pgs.PGS_Triangulation;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PGraphics;
@@ -54,19 +56,19 @@ public class DistanceField {
 		Trianglular
 	}
 
-	protected final PApplet p;
-	protected final PShape shape;
-	protected final Gradient gradient;
+	private final PApplet p;
+	private final PShape shape;
+	private final Gradient gradient;
 
-	protected IIncrementalTin tin;
-	protected final Graph<Vertex, IQuadEdge> graph;
-	protected ShortestPathAlgorithm<Vertex, IQuadEdge> shortestPaths;
+	private IIncrementalTin tin;
+	private final Graph<Vertex, IQuadEdge> graph;
+	private ShortestPathAlgorithm<Vertex, IQuadEdge> shortestPaths;
 	public PGraphics shapeRaster;
 
-	protected int[] colorMap;
+	private int[] colorMap;
 
 	private final ExecutorService THREAD_POOL;
-	protected final int THREAD_COUNT;
+	private final int THREAD_COUNT;
 	private double maxD;
 
 	public DistanceField(PApplet p, PShape shape, Gradient gradient) {
@@ -79,9 +81,9 @@ public class DistanceField {
 		THREAD_POOL = Executors.newFixedThreadPool(THREAD_COUNT);
 
 		final int REFINEMENTS = 1;
-		tin = Triangulator.delaunayTriangulationMesh(shape, null, true, REFINEMENTS, true);
+		tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, true, REFINEMENTS, true);
 
-		System.out.println(tin.getConstraints().size());
+//		System.out.println(tin.getConstraints().size());
 		graph = new DefaultUndirectedWeightedGraph<>(IQuadEdge.class);
 		tin.edges().forEach(e -> {
 			if (e.isConstrainedRegionInterior() || e.isConstrainedRegionBorder()) {
@@ -119,7 +121,6 @@ public class DistanceField {
 	 * @return
 	 */
 	public void computeField(Interpolator interpolator, final PVector origin) {
-
 		shortestPaths = new DijkstraShortestPath<>(graph);
 		var originVertex = tin.getNavigator().getNearestVertex(origin.x, origin.y); // vertices only
 		double maxDistance = 0;
@@ -211,7 +212,7 @@ public class DistanceField {
 			var c = shape.getVertex(i);
 			points.add(new Vertex(c.x, c.y, 0));
 		}
-		var ring = Conversion.fromVertices(shape);
+		var ring = PGS_Conversion.fromPShape(shape);
 		Coordinate[] coords = ring.getCoordinates();
 		if (Orientation.isCCW(coords)) {
 			for (Coordinate c : coords) {
